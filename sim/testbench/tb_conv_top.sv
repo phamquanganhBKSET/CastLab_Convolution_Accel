@@ -7,7 +7,7 @@
 
 `timescale 1 ns / 1 ps
 
-//`define DEBUG
+// `define DEBUG
 
 module tb_conv_top ();
 
@@ -195,16 +195,17 @@ castlab_ws_systolic_array #(
 ) 
 castlab_ws_systolic_array (
   .clk          ( clk             ),
-  .rst          ( rst             ),
+  .rst_n        ( ~rst            ),
 
   .if_start     ( if_start        ),
-  .k_prefetch   ( k_prefetch      ),
-  .of_done      ( of_done         ),
-
   .if_i_data    ( if_i_data       ), 
   .if_i_valid   ( if_i_valid      ), 
+  
+  .k_prefetch   ( k_prefetch      ),
   .k_i_data     ( k_i_data        ),
   .k_i_valid    ( k_i_valid       ),
+
+  .of_done      ( of_done         ),
   .of_o_data    ( of_o_data       ),
   .of_o_valid   ( of_o_valid      )
 );

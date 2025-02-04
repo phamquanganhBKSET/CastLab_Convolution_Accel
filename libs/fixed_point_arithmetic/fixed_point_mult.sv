@@ -14,14 +14,13 @@
 //-----------------------------------------------------------------------------------
 
 module fixed_point_mult #(
-  parameter WORD_WIDTH_IN_1 = 16                               , // Total length of the number
-  parameter WORD_WIDTH_IN_2 = 16                               , // Total length of the number
-  parameter WORD_WIDTH_OUT  = WORD_WIDTH_IN_1 + WORD_WIDTH_IN_2 
+  parameter WORD_WIDTH_IN  = 16               , // Total length of the number
+  parameter WORD_WIDTH_OUT = 2 * WORD_WIDTH_IN
 )
 (
-  input  logic [WORD_WIDTH_IN_1-1:0] multiplier  , // Multiplier
-  input  logic [WORD_WIDTH_IN_2-1:0] multiplicand, // Multiplicand
-  output logic [WORD_WIDTH_OUT-1:0 ] result        // Result = multiplier * multiplicand
+  input  logic [WORD_WIDTH_IN-1:0 ] multiplier  , // Multiplier
+  input  logic [WORD_WIDTH_IN-1:0 ] multiplicand, // Multiplicand
+  output logic [WORD_WIDTH_OUT-1:0] result        // Result = multiplier * multiplicand
 );
 
   //==============================================================================
@@ -32,9 +31,8 @@ module fixed_point_mult #(
   // result
   // ------
   baugh_wooley_mult #(
-    .INPUT_WIDTH_1(WORD_WIDTH_IN_1),
-    .INPUT_WIDTH_2(WORD_WIDTH_IN_2),
-    .OUTPUT_WIDTH (WORD_WIDTH_OUT )
+    .INPUT_WIDTH (WORD_WIDTH_IN ),
+    .OUTPUT_WIDTH(WORD_WIDTH_OUT)
   ) baugh_wooley_mult (
     .multiplier  (multiplier  ),
     .multiplicand(multiplicand),

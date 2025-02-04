@@ -59,22 +59,30 @@ module castlab_ws_systolic_array #(
 );
 
   //==============================================================================
+  //                         Internal parameters
+  //==============================================================================
+
+  localparam PSUM_BITWIDTH = IF_BITWIDTH + K_BITWIDTH;
+  localparam PSUM_FRAC_BIT = IF_FRAC_BIT + K_FRAC_BIT;
+  localparam OF_INT_BIT    = OF_BITWIDTH - OF_FRAC_BIT;
+
+  //==============================================================================
   //                           Internal signals
   //==============================================================================
 
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_iclr         ;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_wclr         ;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_iload_i_valid;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_wload_i_valid;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_if_i_data    ;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_weight_i_data;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_psum_i_data  ;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_iload_o_valid;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_if_o_data    ;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_weight_o_data;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_psum_o_data  ;
-  logic [IF_PORT-1:0][K_NUM-1:0][K_PORT-1:0] pe_psum_o_valid ;
-  logic                                      input_is_valid  ;
+  logic                                             pe_iclr         ;
+  logic                                             pe_wclr         ;
+  logic [IF_PORT-1:0][K_NUM-1:0]                    pe_iload_i_valid;
+  logic [IF_PORT-1:0][K_NUM-1:0]                    pe_wload_i_valid;
+  logic [IF_PORT-1:0][K_NUM-1:0][IF_BITWIDTH-1:0  ] pe_if_i_data    ;
+  logic [IF_PORT-1:0][K_NUM-1:0][K_BITWIDTH-1:0   ] pe_weight_i_data;
+  logic [IF_PORT-1:0][K_NUM-1:0][PSUM_BITWIDTH-1:0] pe_psum_i_data  ;
+  logic [IF_PORT-1:0][K_NUM-1:0]                    pe_iload_o_valid;
+  logic [IF_PORT-1:0][K_NUM-1:0][IF_BITWIDTH-1:0  ] pe_if_o_data    ;
+  logic [IF_PORT-1:0][K_NUM-1:0][K_BITWIDTH-1:0   ] pe_weight_o_data;
+  logic [IF_PORT-1:0][K_NUM-1:0][PSUM_BITWIDTH-1:0] pe_psum_o_data  ;
+  logic [IF_PORT-1:0][K_NUM-1:0]                    pe_psum_o_valid ;
+  logic                                             input_is_valid  ;
 
   //==============================================================================
   //                               Computing
@@ -96,8 +104,8 @@ module castlab_ws_systolic_array #(
         ) ws_processing_element (
           .clk          (clk                   ), // Clock signal
           .rst_n        (rst_n                 ), // Asynchronous reset, active LOW
-          .iclr         (pe_iclr[i][j]         ), // Synchronous reset for input data, active HIGH
-          .wclr         (pe_wclr[i][j]         ), // Synchronous reset for kernel data, active HIGH
+          .iclr         (pe_iclr               ), // Synchronous reset for input data, active HIGH
+          .wclr         (pe_wclr               ), // Synchronous reset for kernel data, active HIGH
           .iload_i_valid(pe_iload_i_valid[i][j]), // Input load valid in
           .wload_i_valid(pe_wload_i_valid[i][j]), // Weight load valid
           .if_i_data    (pe_if_i_data[i][j]    ), // Input in
@@ -127,14 +135,25 @@ module castlab_ws_systolic_array #(
   // pe_iload_i_valid
   // ---------------------------
   generate
-    for (i = 0; i < IF_PORT; i++) begin
-      for (j = 0; j < K_NUM; j++) begin
+    for (i = 0; i < IF_PORT; i++) begin : pe_iload_i_valid_loop_i
+      for (j = 0; j < K_NUM; j++) begin : pe_iload_i_valid_loop_j
         if (j == 0) begin
-          assign pe_iload_i_valid[i][j] = if_i_valid[j];
+          assign pe_iload_i_valid[i][j] = if_i_valid[i];
         end
         else begin
           assign pe_iload_i_valid[i][j] = pe_iload_o_valid[i][j-1];
         end
+      end
+    end
+  endgenerate
+
+  // ---------------------------
+  // pe_wload_i_valid
+  // ---------------------------
+  generate
+    for (i = 0; i < IF_PORT; i++) begin : pe_wload_i_valid_loop_i
+      for (j = 0; j < K_NUM; j++) begin : pe_wload_i_valid_loop_j
+        assign pe_wload_i_valid[i][j] = k_i_valid[j];
       end
     end
   endgenerate
@@ -149,7 +168,7 @@ module castlab_ws_systolic_array #(
           assign pe_if_i_data[i][j] = if_i_data[i];
         end
         else begin
-          assign pe_if_i_data[i][j] = pe_if_i_data[i][j-1];
+          assign pe_if_i_data[i][j] = pe_if_o_data[i][j-1];
         end
       end
     end
@@ -165,7 +184,7 @@ module castlab_ws_systolic_array #(
           assign pe_weight_i_data[i][j] = k_i_data[j];
         end
         else begin
-          assign pe_weight_i_data[i][j] = pe_weight_i_data[i-1][j];
+          assign pe_weight_i_data[i][j] = pe_weight_o_data[i-1][j];
         end
       end
     end
@@ -181,7 +200,7 @@ module castlab_ws_systolic_array #(
           assign pe_psum_i_data[i][j] = 0;
         end
         else begin
-          assign pe_psum_i_data[i][j] = pe_psum_i_data[i-1][j];
+          assign pe_psum_i_data[i][j] = pe_psum_o_data[i-1][j];
         end
       end
     end
@@ -211,14 +230,14 @@ module castlab_ws_systolic_array #(
   // of_o_data
   generate
     for (i = 0; i < OF_NUM; i++) begin : of_o_data_loop_i
-      assign of_o_data[i] = pe_psum_o_data[IF_PORT-1][i];
+      assign of_o_data[i] = pe_psum_o_data[IF_PORT-1][i][PSUM_FRAC_BIT+OF_INT_BIT-1:PSUM_FRAC_BIT-OF_FRAC_BIT];
     end
   endgenerate
 
   // of_o_valid
   generate
     for (i = 0; i < OF_NUM; i++) begin : of_o_valid_loop_i
-      assign of_o_valid[i] = of_o_valid[IF_PORT-1][i];
+      assign of_o_valid[i] = pe_psum_o_valid[IF_PORT-1][i];
     end
   endgenerate
 

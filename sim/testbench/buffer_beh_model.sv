@@ -203,25 +203,27 @@ begin
   for (y=0 ; y<HEIGHT ; y=y+1) begin
     for (x=0 ; x<WIDTH ; x=x+1) begin
       for (c=0 ; c<CHANNEL ; c=c+1) begin 
-        @(posedge clk);
-        #1; 
+        if (BITWIDTH > 8) begin
+          @(posedge clk);
+          #1; 
 
-        err = 0;
-        wait(i_valid);
-        #1;
-       
-        i_data_t    = i_data; 
-        i_data_relu = (i_data_t[BITWIDTH-1]==1)? 0 : i_data_t;
-        i_data_truc = (i_data_relu[BITWIDTH-1 -: BITWIDTH-8]!=0)? {8{1'b1}} : i_data_relu[7:0];
+          err = 0;
+          wait(i_valid);
+          #1;
+         
+          i_data_t    = i_data; 
+          i_data_relu = (i_data_t[BITWIDTH-1]==1)? 0 : i_data_t;
+          i_data_truc = (i_data_relu[BITWIDTH-1 -: BITWIDTH-8]!=0)? {8{1'b1}} : i_data_relu[7:0];
 
-        golden_data = data_array[y][x][c];
+          golden_data = data_array[y][x][c];
 
-        if(i_data_truc != golden_data)begin // Error
-          err_cnt = err_cnt +1;
-          err = 1;
-          $display("Error Count: %0d", err_cnt);
+          if(i_data_truc != golden_data)begin // Error
+            err_cnt = err_cnt +1;
+            err = 1;
+            $display("Error Count: %0d", err_cnt);
+          end
+          #1;
         end
-        #1;
 
       end
     end

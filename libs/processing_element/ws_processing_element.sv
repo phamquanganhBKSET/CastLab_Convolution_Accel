@@ -45,11 +45,13 @@ module ws_processing_element #(
   //                           Internal signals
   //==============================================================================
 
-  logic [INPUT_WIDTH-1:0 ] if_i_data_reg    ; // Latched if_i_data
-  logic [WEIGHT_WIDTH-1:0] prefetched_weight; // Prefetched weight
-  logic [PSUM_WIDTH-1:0  ] pre_psum         ; // Pre psum
-  logic [PSUM_WIDTH-1:0  ] psum             ; // Psum
-  logic [PSUM_WIDTH-1:0  ] psum_reg         ; // Latched psum
+  logic [INPUT_WIDTH-1:0  ] if_i_data_reg           ; // Latched if_i_data
+  logic [WEIGHT_WIDTH-1:0 ] prefetched_weight       ; // Prefetched weight
+  logic [INPUT_WIDTH-1:0  ] extend_prefetched_weight; // Prefetched weight
+  logic [2*INPUT_WIDTH-1:0] extend_pre_psum         ; // Pre psum
+  logic [PSUM_WIDTH-1:0   ] pre_psum                ; // Pre psum
+  logic [PSUM_WIDTH-1:0   ] psum                    ; // Psum
+  logic [PSUM_WIDTH-1:0   ] psum_reg                ; // Latched psum
 
   //==============================================================================
   //                               Computing
@@ -92,15 +94,20 @@ module ws_processing_element #(
     end
   end
 
+  // extend_prefetched_weight
+  assign extend_prefetched_weight = {{(INPUT_WIDTH - WEIGHT_WIDTH){prefetched_weight[WEIGHT_WIDTH-1]}}, prefetched_weight};
+
   // pre_psum
   fixed_point_mult #(
-    .WORD_WIDTH_IN_1(INPUT_WIDTH ), // Total length of the number
-    .WORD_WIDTH_IN_2(WEIGHT_WIDTH)  // Total length of the number
+    .WORD_WIDTH_IN(INPUT_WIDTH ) // Total length of the number
   ) fixed_point_mult_pre_psum (
-    .multiplier  (if_i_data_reg    ), // Multiplier
-    .multiplicand(prefetched_weight), // Multiplicand
-    .result      (pre_psum         )  // Result = multiplier * multiplicand
+    .multiplier  (if_i_data_reg           ), // Multiplier
+    .multiplicand(extend_prefetched_weight), // Multiplicand
+    .result      (extend_pre_psum         )  // Result = multiplier * multiplicand
   );
+
+  // pre_psum
+  assign pre_psum = extend_pre_psum[PSUM_WIDTH-1:0];
 
   // psum
   fixed_point_add #(
@@ -139,7 +146,7 @@ module ws_processing_element #(
     if(~rst_n) begin
       psum_o_valid <= 0;
     end else begin
-      psum_o_valid <= iload_i_valid;
+      psum_o_valid <= iload_o_valid;
     end
   end
 
